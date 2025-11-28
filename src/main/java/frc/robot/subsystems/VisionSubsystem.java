@@ -4,6 +4,8 @@
 
 package frc.robot.subsystems;
 
+import edu.wpi.first.math.controller.PIDController;
+
 import static edu.wpi.first.units.Units.Rotation;
 
 import java.util.ArrayList;
@@ -54,6 +56,14 @@ public class VisionSubsystem extends SubsystemBase {
   private static final Map<PhotonCamera, Double> CAMERA_HEIGHTS = new HashMap<>();
   private static final Map<PhotonCamera, Double> CAMERA_PITCHES = new HashMap<>();
   private static Set<Integer> ID_SET;
+
+  private PIDController xController = new PIDController(1.5,0,0); //forward
+  private PIDController yController = new PIDController(1.5,0,0); // strafe
+  private PIDController thetaController = new PIDController(3.0,0,0); // turn
+
+  {
+    thetaController.enableContinousInput(-180,180);
+  }
 
   PhotonTrackedTarget closestTarget = null;
   PhotonCamera bestCamera = null;
@@ -454,5 +464,31 @@ public class VisionSubsystem extends SubsystemBase {
     }
 
   }
+
+/**
+ * Returns the AprilTag Pose relative to the robot:
+ * X = forward (+ is in front of the robot)
+ * Y = sideways (+ is left of the robot)
+ * Z = vertical difference
+ * Yaw = angle difference between robot and tag
+ * Returns null if no target (to avoid any... complications)
+ */
+
+public double[] getRobotRelativePose() {
+  PhotonTrackedTarget target = getClosestTarget();
+  if (target == null) return null;
+
+  // Photon already provides this transform; yippee for a 750$ camera
+  //[X, Y, Z, Roll, Pitch, Yaw] relative to robot 
+  double[] pose = target.getBestCameraToTarget().getTranslation().toArray();
+
+  double yaw = target.getYaw(); // degrees
+  return new double[]{pose[0], pose[1], pose[2], yaw};
+}
+
+
+
+
+
 
 }
