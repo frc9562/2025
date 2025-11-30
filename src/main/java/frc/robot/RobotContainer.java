@@ -21,7 +21,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-
+import frc.robot.commands.AprilTagCommands.AutoAlign;
 import frc.robot.commands.LEDCommands.SetLedStateCommand;
 // import frc.robot.commands.SwerveCommands.PathPlannerAlignment;
 // import frc.robot.commands.SwerveCommands.ManualAutoAlign;
@@ -128,6 +128,10 @@ public class RobotContainer {
                                                 .withTimeout(0.1),
                                 m_armSubsystem.zero());
         }
+        // auto align
+        public Command autoAlign() {
+                return new AutoAlign(m_visionSubsystem);
+            }
 
         // autoScore
         private final Command autoScoreL4() {
@@ -177,6 +181,7 @@ public class RobotContainer {
                 m_armSubsystem.burnFlash();
                 m_coralGroundIntake.burnFlash();
         }
+        
 
         private void configureBindings() {
                 // Note that X is defined as forward according to WPILib convention,
@@ -230,6 +235,10 @@ public class RobotContainer {
                 XController.y().onFalse(m_armSubsystem.intakeOuttake(IntakeDirection.STOP).withTimeout(0.1));
 
                 XController.b().onChange(m_coralGroundIntake.L1());
+                
+                // AUTO ALIGN USING APRILTAG
+                XController.x().whileTrue(autoAlign());
+
 
                 // XController.b().onTrue(pathPlannerAlignmentLeft);
                 // XController.b().onTrue(pathPlannerAlignmentRight);

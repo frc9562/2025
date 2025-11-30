@@ -62,7 +62,18 @@ public class VisionSubsystem extends SubsystemBase {
   private PIDController thetaController = new PIDController(3.0,0,0); // turn
 
   {
-    thetaController.enableContinousInput(-180,180);
+      // Angular PID must wrap around [-180, 180]
+      thetaController.enableContinuousInput(-180, 180);
+  
+      // Set tolerances for autoalign
+      xController.setTolerance(0.05);     // 5cm
+      yController.setTolerance(0.05);     // 5cm
+      thetaController.setTolerance(1.0);  // 1 degree
+  
+      // OPTIONAL (recommended)
+      xController.setIntegratorRange(-0.3, 0.3);
+      yController.setIntegratorRange(-0.3, 0.3);
+      thetaController.setIntegratorRange(-0.4, 0.4);
   }
 
   PhotonTrackedTarget closestTarget = null;
@@ -465,29 +476,70 @@ public class VisionSubsystem extends SubsystemBase {
 
   }
 
-/**
- * Returns the AprilTag Pose relative to the robot:
- * X = forward (+ is in front of the robot)
- * Y = sideways (+ is left of the robot)
- * Z = vertical difference
- * Yaw = angle difference between robot and tag
- * Returns null if no target (to avoid any... complications)
+  /**
+   * Returns the AprilTag Pose relative to the robot:
+   * X = forward (+ is in front of the robot)
+   * Y = sideways (+ is left of the robot)
+   * Z = vertical difference
+   * Yaw = angle difference between robot and tag
+   * Returns null if no target (to avoid any... complications)
+   */
+
+  public double[] getRobotRelativePose() {
+    PhotonTrackedTarget target = getClosestTarget();
+    if (target == null) return null;
+
+    // Photon already provides this transform; yippee for a 750$ camera
+    //[X, Y, Z, Roll, Pitch, Yaw] relative to robot 
+    double[] pose = target.getBestCameraToTarget().getTranslation().toArray();
+
+    double yaw = target.getYaw(); // degrees
+    return new double[]{pose[0], pose[1], pose[2], yaw};
+  }
+ // returns full field pose if valid, otherwise null
+  public Pose2d getVisionPose() {
+    if (myPose3d == null) return null;
+    return myPose3d.toPose2d();
+  }
+
+
+  public void updatePoseEstimator(SwerveDrivePoseEstimator estimator) {
+    estimatePoseMultitag(estimator);
+
+
+  }
+  /**
+ * Returns alignment error relative to the closest tag.
+ * x = forward error (meters)
+ * y = strafe error (meters)
+ * theta = rotational error (degrees)
+ * Returns null if no tag found.
  */
+  public double[] getAutoAlignError() {
+    PhotonTrackedTarget target = getClosestTarget();
+    if (target == null) return null;
 
-public double[] getRobotRelativePose() {
-  PhotonTrackedTarget target = getClosestTarget();
-  if (target == null) return null;
+    Transform3d camToTag = target.getBestCameraToTarget();
 
-  // Photon already provides this transform; yippee for a 750$ camera
-  //[X, Y, Z, Roll, Pitch, Yaw] relative to robot 
-  double[] pose = target.getBestCameraToTarget().getTranslation().toArray();
+    double x = camToTag.getX();   // forward/back
+    double y = camToTag.getY();   // left/right
+    double yaw = target.getYaw(); // degrees
 
-  double yaw = target.getYaw(); // degrees
-  return new double[]{pose[0], pose[1], pose[2], yaw};
-}
+    return new double[]{ x, y, yaw };
+  }
 
-
-
+  public PIDController getXController() {
+    return xController;
+  }
+  
+  public PIDController getYController() {
+    return yController;
+  }
+  
+  public PIDController getThetaController() {
+    return thetaController;
+  }
+  
 
 
 

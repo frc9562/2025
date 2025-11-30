@@ -1,36 +1,73 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
+  // Copyright (c) FIRST and other WPILib contributors.
+  // Open Source Software; you can modify and/or share it under the terms of
+  // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.commands.AprilTagCommands;
+  package frc.robot.commands.AprilTagCommands;
 
-import edu.wpi.first.wpilibj2.command.Command;
+  import edu.wpi.first.wpilibj2.command.Command;
+  import frc.robot.subsystems.VisionSubsystem;
+  import frc.robot.RobotContainer;
+  import frc.robot.generated.TunerConstants;
+  import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
-/* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
-public class AutoAlign extends Command {
-  /** Creates a new AutoAlign. */
-  public AutoAlign() {
-    // Use addRequirements() here to declare subsystem dependencies.
+  public class AutoAlign extends Command {
+
+    private final VisionSubsystem vision;
+
+    public AutoAlign(VisionSubsystem vision) {
+      this.vision = vision;
+      addRequirements(vision, RobotContainer.drivetrain);
+    }
+
+    @Override
+    public void initialize() {}
+
+    @Override
+    public void execute() {
+
+      double[] errors = vision.getAutoAlignError();
+      if (errors == null) {
+        RobotContainer.drivetrain.setControl(
+          TunerConstants.DriveRequest.withVelocityX(0).withVelocityY(0).withRotationalRate(0)
+        );
+        return;
+      }
+
+      double xErr = errors[0];     // meters
+      double yErr = errors[1];     // meters
+      double yawErr = errors[2];   // degrees
+
+      double xSpeed = vision.getXController().calculate(0, xErr);
+      double ySpeed = vision.getYController().calculate(0, yErr);
+      double turnSpeed = vision.getThetaController().calculate(0, yawErr);
+
+
+      // Clamp speeds for safety
+      xSpeed = Math.max(Math.min(xSpeed, 1.5), -1.5);
+      ySpeed = Math.max(Math.min(ySpeed, 1.5), -1.5);
+      turnSpeed = Math.max(Math.min(turnSpeed, 2.0), -2.0);
+
+      RobotContainer.drivetrain.setControl(
+          TunerConstants.DriveRequest
+              .withVelocityX(xSpeed)
+              .withVelocityY(ySpeed)
+              .withRotationalRate(turnSpeed)
+      );
+    }
+
+    @Override
+    public void end(boolean interrupted) {
+      RobotContainer.drivetrain.setControl(
+        TunerConstants.DriveRequest.withVelocityX(0).withVelocityY(0).withRotationalRate(0)
+      );
+    }
+
+    @Override
+    public boolean isFinished() {
+      return vision.getXController().atSetpoint()
+          && vision.getYController().atSetpoint()
+          && vision.getThetaController().atSetpoint();
+    }
+
   }
 
-  // Called when the command is initially scheduled.
-  @Override
-  public void initialize() {
-  }
-
-  // Called every time the scheduler runs while the command is scheduled.
-  @Override
-  public void execute() {
-  }
-
-  // Called once the command ends or is interrupted.
-  @Override
-  public void end(boolean interrupted) {
-  }
-
-  // Returns true when the command should end.
-  @Override
-  public boolean isFinished() {
-    return false;
-  }
-}
