@@ -540,7 +540,4 @@ public class VisionSubsystem extends SubsystemBase {
     return thetaController;
   }
   
-
-
-
 }
